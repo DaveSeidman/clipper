@@ -1,0 +1,14 @@
+node_modules/
+dist/
+data/jobs/
+data/uploads/
+data/models/
+data/.uv-cache/
+.venv-videomae/
+.DS_Store
+*.log
+__pycache__/
+*.py[cod]
+
+# Local source footage is too large for a normal Git repository.
+/pier6session-b.mp4
