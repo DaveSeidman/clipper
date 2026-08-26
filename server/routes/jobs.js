@@ -22,7 +22,7 @@ const upload = multer({
 });
 
 const router = express.Router();
-const MIN_TRAINING_LABELS_PER_CLASS = 50;
+const MIN_TRAINING_LABELS_PER_CLASS = 40;
 
 function asyncRoute(handler) {
   return async (req, res, next) => {
@@ -150,22 +150,47 @@ router.post(
       return;
     }
 
-    const sourcePath = path.join(jobDir(job.id), job.source.relativePath);
-    const embeddingRows = isVideoMaeModel(job.model)
-      ? await extractVideoMaeTimelineEmbeddings(job, job.model, req.body || {})
-      : null;
-    job.analysis = await analyzeTimeline({
-      inputPath: sourcePath,
-      jobPath: jobDir(job.id),
-      model: job.model,
-      duration: job.source.duration,
-      options: req.body || {},
-      embeddingRows
-    });
-    job.export = null;
-    job.status = 'analyzed';
-    await saveJob(job);
-    res.json({ job: toPublicJob(job) });
+    const streamsProgress = req.get('accept')?.includes('application/x-ndjson');
+    if (streamsProgress) {
+      res.status(200);
+      res.set({
+        'Content-Type': 'application/x-ndjson; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        'X-Accel-Buffering': 'no'
+      });
+      res.flushHeaders();
+    }
+
+    const sendProgress = streamsProgress
+      ? progress => res.write(`${JSON.stringify({ type: 'progress', progress })}\n`)
+      : undefined;
+
+    try {
+      const sourcePath = path.join(jobDir(job.id), job.source.relativePath);
+      const embeddingRows = isVideoMaeModel(job.model)
+        ? await extractVideoMaeTimelineEmbeddings(job, job.model, req.body || {}, sendProgress)
+        : null;
+      job.analysis = await analyzeTimeline({
+        inputPath: sourcePath,
+        jobPath: jobDir(job.id),
+        model: job.model,
+        duration: job.source.duration,
+        options: req.body || {},
+        embeddingRows
+      });
+      job.export = null;
+      job.status = 'analyzed';
+      await saveJob(job);
+      const payload = { job: toPublicJob(job) };
+      if (streamsProgress) {
+        res.end(`${JSON.stringify({ type: 'result', ...payload })}\n`);
+      } else {
+        res.json(payload);
+      }
+    } catch (error) {
+      if (!streamsProgress) throw error;
+      res.end(`${JSON.stringify({ type: 'error', error: error.message || 'Timeline analysis failed.' })}\n`);
+    }
   })
 );
 

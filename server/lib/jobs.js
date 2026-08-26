@@ -133,7 +133,7 @@ function makeSampleStarts(duration, count, clipDuration, seedText, existingStart
 }
 
 export async function generateSamples(job, options = {}) {
-  const count = Math.max(20, Math.min(200, Number(options.count || 100)));
+  const count = Math.max(20, Math.min(200, Number(options.count || 200)));
   const clipDuration = Math.max(0.5, Math.min(3, Number(options.clipDuration || 1)));
   const labels = options.labels || {};
   const sourcePath = path.join(jobDir(job.id), job.source.relativePath);

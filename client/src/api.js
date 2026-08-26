@@ -53,13 +53,42 @@ export async function trainJob(jobId, labels) {
   return readJson(response);
 }
 
-export async function analyzeJob(jobId, options) {
+export async function analyzeJob(jobId, options, onProgress) {
   const response = await fetch(`/api/jobs/${jobId}/analyze`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/x-ndjson'
+    },
     body: JSON.stringify(options)
   });
-  return readJson(response);
+  if (!response.ok) return readJson(response);
+  if (!response.body) throw new Error('Timeline analysis did not return a response stream.');
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let result = null;
+
+  function processLine(line) {
+    if (!line.trim()) return;
+    const message = JSON.parse(line);
+    if (message.type === 'progress') onProgress?.(message.progress);
+    if (message.type === 'result') result = { job: message.job };
+    if (message.type === 'error') throw new Error(message.error || 'Timeline analysis failed.');
+  }
+
+  while (true) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+    const lines = buffer.split(/\r?\n/);
+    buffer = lines.pop() || '';
+    for (const line of lines) processLine(line);
+    if (done) break;
+  }
+  processLine(buffer);
+  if (!result) throw new Error('Timeline analysis ended before returning a result.');
+  return result;
 }
 
 export async function saveSegments(jobId, segments) {

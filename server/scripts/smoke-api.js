@@ -84,7 +84,7 @@ async function main() {
   );
   const keepCount = Object.values(labels).filter(label => label === 'keep').length;
   const cutCount = Object.values(labels).filter(label => label === 'cut').length;
-  if (keepCount < 50 || cutCount < 50) {
+  if (keepCount < 40 || cutCount < 40) {
     throw new Error(`Smoke labels are imbalanced: ${keepCount} keep / ${cutCount} cut`);
   }
 

@@ -1014,6 +1014,49 @@ select {
   box-shadow: 0 16px 40px rgba(31, 41, 55, 0.14);
 }
 
+.busy-content {
+  display: grid;
+  gap: 8px;
+}
+
+.analysis-progress-wrap {
+  display: grid;
+  gap: 5px;
+  min-width: min(360px, calc(100vw - 100px));
+}
+
+.analysis-progress-wrap small {
+  color: #64748b;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+
+.analysis-progress {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.analysis-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #0f766e;
+  transition: width 180ms ease-out;
+}
+
+.analysis-progress.indeterminate > span {
+  width: 38%;
+  animation: analysis-progress-slide 1.2s ease-in-out infinite;
+}
+
+@keyframes analysis-progress-slide {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(285%); }
+}
+
 .spin {
   animation: spin 1s linear infinite;
 }

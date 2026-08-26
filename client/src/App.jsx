@@ -39,8 +39,8 @@ const DEFAULT_ANALYSIS = {
   paddingAfter: 1.5
 };
 
-const TRAINING_SAMPLE_COUNT = 100;
-const LABEL_TARGET = 50;
+const TRAINING_SAMPLE_COUNT = 200;
+const LABEL_TARGET = 40;
 const LAST_JOB_STORAGE_KEY = 'clipper:last-job-id';
 const START_FRESH_STORAGE_KEY = 'clipper:start-fresh';
 
@@ -90,6 +90,7 @@ function App() {
   const [analysisOptions, setAnalysisOptions] = useState(DEFAULT_ANALYSIS);
   const [exportFormat, setExportFormat] = useState('mp4');
   const [analysisDirty, setAnalysisDirty] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState(null);
 
   const previousJobIdRef = useRef(null);
   const autoGenerationAttemptRef = useRef(null);
@@ -223,6 +224,7 @@ function App() {
     setAnalysisOptions(DEFAULT_ANALYSIS);
     setExportFormat('mp4');
     setAnalysisDirty(false);
+    setAnalysisProgress(null);
   }
 
   return (
@@ -301,9 +303,14 @@ function App() {
               }
               onAnalyze={() =>
                 run('Analyzing timeline', async () => {
-                  const payload = await analyzeJob(job.id, analysisOptions);
-                  setJob(payload.job);
-                  setAnalysisDirty(false);
+                  setAnalysisProgress({ completed: 0, total: null });
+                  try {
+                    const payload = await analyzeJob(job.id, analysisOptions, setAnalysisProgress);
+                    setJob(payload.job);
+                    setAnalysisDirty(false);
+                  } finally {
+                    setAnalysisProgress(null);
+                  }
                 })
               }
               onExport={() =>
@@ -343,11 +350,40 @@ function App() {
         <div className="busy-overlay" role="status">
           <div className="busy-panel">
             <RefreshCcw size={20} className="spin" />
-            <span>{busy}</span>
+            <div className="busy-content">
+              <span>{busy}</span>
+              {busy === 'Analyzing timeline' ? <AnalysisProgress progress={analysisProgress} /> : null}
+            </div>
           </div>
         </div>
       ) : null}
     </main>
+  );
+}
+
+function AnalysisProgress({ progress }) {
+  const hasTotal = Number.isFinite(progress?.total) && progress.total > 0;
+  const percentage = hasTotal
+    ? Math.min(100, Math.round((progress.completed / progress.total) * 100))
+    : 0;
+  return (
+    <div className="analysis-progress-wrap">
+      <div
+        className={`analysis-progress${hasTotal ? '' : ' indeterminate'}`}
+        role="progressbar"
+        aria-label="Timeline embedding progress"
+        aria-valuemin="0"
+        aria-valuemax={hasTotal ? progress.total : undefined}
+        aria-valuenow={hasTotal ? progress.completed : undefined}
+      >
+        <span style={hasTotal ? { width: `${percentage}%` } : undefined} />
+      </div>
+      <small>
+        {hasTotal
+          ? `Embedded ${progress.completed.toLocaleString()} of ${progress.total.toLocaleString()} windows · ${percentage}%`
+          : 'Preparing timeline embeddings…'}
+      </small>
+    </div>
   );
 }
 

@@ -57,10 +57,26 @@ async function extractEmbeddings(job, options) {
   if (options.mode === 'timeline') args.push('--interval', String(options.interval));
   if (process.env.CLIPPER_VIDEOMAE_OFFLINE === '1') args.push('--local-files-only');
 
+  let stderrBuffer = '';
+  const handleStderr = chunk => {
+    process.stderr.write(`[videomae] ${chunk}`);
+    stderrBuffer += chunk;
+    const lines = stderrBuffer.split(/\r?\n/);
+    stderrBuffer = lines.pop() || '';
+    for (const line of lines) {
+      const match = line.match(/Embedded (\d+)\/(\d+) uncached windows/);
+      if (!match) continue;
+      options.onProgress?.({
+        completed: Number(match[1]),
+        total: Number(match[2])
+      });
+    }
+  };
+
   try {
     await runProcess(PYTHON_PATH, args, {
       cwd: ROOT_DIR,
-      onStderr: chunk => process.stderr.write(`[videomae] ${chunk}`)
+      onStderr: handleStderr
     });
   } catch (error) {
     if (error.stderr?.includes('local-files-only') || error.stderr?.includes('LocalEntryNotFoundError')) {
@@ -128,7 +144,7 @@ export async function ensureVideoMaeSampleEmbeddings(job) {
   };
 }
 
-export async function extractVideoMaeTimelineEmbeddings(job, model, options = {}) {
+export async function extractVideoMaeTimelineEmbeddings(job, model, options = {}, onProgress) {
   const config = configurationFrom(model);
   const interval = numberOption(options.interval, 1, 0.5, 5);
   const outputPath = path.join(
@@ -140,7 +156,8 @@ export async function extractVideoMaeTimelineEmbeddings(job, model, options = {}
     ...config,
     mode: 'timeline',
     interval,
-    outputPath
+    outputPath,
+    onProgress
   });
   return payload.rows.map(row => ({
     start: row.start,

@@ -28,8 +28,8 @@ Open `http://127.0.0.1:5173`.
 ## Workflow
 
 1. Upload a source video.
-2. Clipper automatically generates 100 one-second training samples.
-3. Review the randomized samples as `keep`, `cut`, or `unsure`. Clipper adds more samples as needed until you have at least 50 usable examples in both the `keep` and `cut` classes.
+2. Clipper automatically generates 200 one-second training samples.
+3. Review the randomized samples as `keep`, `cut`, or `unsure`. Clipper adds more samples as needed until you have at least 40 usable examples in both the `keep` and `cut` classes.
 4. Train the classifier, then audit its predictions on 10 held-out clips in Model Check.
 5. Analyze the full timeline.
 6. Preview the virtual edit with the custom scrubber.
